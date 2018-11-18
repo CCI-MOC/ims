@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, ForeignKey
 from sqlalchemy import Column, Integer, String
 from sqlalchemy import UniqueConstraint
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.orm import relationship
 
 import ims.exception.db_exceptions as db_exceptions
@@ -37,6 +37,15 @@ class ImageRepository:
                 img.id = id
             self.connection.session.add(img)
             self.connection.session.commit()
+        except IntegrityError:
+            logger.info("Integrity Error Caused for %s in project with id %d "
+                        "and parent id %d" % (image_name, project_id,
+                                              parent_id))
+            self.connection.session.rollback()
+            actual_parent_id = self.fetch_parent_id_with_project_id(image_name,
+                                                                    project_id)
+            if actual_parent_id != parent_id:
+                raise db_exceptions.ImageExistsException(image_name)
         except SQLAlchemyError as e:
             self.connection.session.rollback()
             raise db_exceptions.ORMException(e.message)
@@ -61,7 +70,8 @@ class ImageRepository:
                 self.connection.session.delete(image)
                 self.connection.session.commit()
             else:
-                raise db_exceptions.ImageNotFoundException(name)
+                logger.info("%s in project %s already "
+                            "deleted" % (name, project_name))
         except SQLAlchemyError as e:
             self.connection.session.rollback()
             raise db_exceptions.ORMException(e.message)
@@ -227,6 +237,19 @@ class ImageRepository:
                 name=name).one_or_none()
             if image is not None and image.parent_id is not None:
                 return image.parent_id
+        except SQLAlchemyError as e:
+            raise db_exceptions.ORMException(e.message)
+
+    @log
+    def fetch_parent_id_with_project_id(self, name, project_id):
+        try:
+            image = self.connection.session.query(Image). \
+                filter_by(project_id=project_id).filter_by(
+                name=name).one_or_none()
+            if image is not None and image.parent_id is not None:
+                return image.parent_id
+            elif image is None:
+                raise db_exceptions.ImageNotFoundException(name)
         except SQLAlchemyError as e:
             raise db_exceptions.ORMException(e.message)
 

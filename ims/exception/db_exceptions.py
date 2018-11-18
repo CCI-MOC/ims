@@ -27,6 +27,20 @@ class ImageNotFoundException(DBException):
         return self.name + " not found"
 
 
+class ImageExistsException(DBException):
+    """ Should be raised when an image with the same name exists """
+
+    @property
+    def status_code(self):
+        return 500
+
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return self.name + " already exists"
+
+
 class ImageHasClonesException(DBException):
     @property
     def status_code(self):
