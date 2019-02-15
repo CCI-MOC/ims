@@ -8,7 +8,6 @@ import ims.exception.hil_exceptions as hil_exceptions
 from ims.common.log import create_logger, trace, log
 
 logger = create_logger(__name__)
-HIL_API = 'v0'
 
 
 class HIL:
@@ -66,19 +65,19 @@ class HIL:
 
     @log
     def __init__(self, base_url, usr, passwd):
-        self.base_url = urlparse.urljoin(base_url + '/', HIL_API)
+        self.base_url = base_url
         self.usr = usr
         self.passwd = passwd
 
     @trace
     def __call_rest_api(self, api):
-        link = urlparse.urljoin(self.base_url + '/', api)
+        link = self.base_url + api
         request = HIL.Request('get', None, auth=(self.usr, self.passwd))
         return HIL.Communicator(link, request).send_request()
 
     @trace
     def __call_rest_api_with_body(self, api, body):
-        link = urlparse.urljoin(self.base_url + '/', api)
+        link = self.base_url + api
         request = HIL.Request('post', body, auth=(self.usr, self.passwd))
         return HIL.Communicator(link, request).send_request()
 
@@ -89,7 +88,7 @@ class HIL:
 
     @log
     def query_project_nodes(self, project):
-        api = 'project/' + project + '/nodes'
+        api = '/project/' + project + '/nodes'
         return self.__call_rest_api(api=api)
 
     @log
@@ -116,5 +115,5 @@ class HIL:
 
     @log
     def validate_project(self, project):
-        api = 'project/' + project + '/nodes'
+        api = '/project/' + project + '/nodes'
         return self.__call_rest_api(api=api)
